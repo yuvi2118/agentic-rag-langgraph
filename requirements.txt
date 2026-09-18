@@ -10,8 +10,6 @@ python-docx
 python-pptx
 beautifulsoup4
 
-# --- Step 2: document loading + chunking ---
-pypdf
-beautifulsoup4
-python-docx
-python-pptx
+# --- Step 3: embeddings + vector store ---
+qdrant-client
+openai

@@ -1,0 +1,65 @@
+# ----- QDRANT SETUP ------------
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, VectorParams
+
+from app.config import get_settings
+
+COLLECTION_NAME = "kubernetes_docs"
+
+VECTOR_SIZE = 1536
+
+def get_qdrant_client() -> QdrantClient:
+    settings = get_settings()
+    return QdrantClient(
+        url= settings.qdrant_cluster_endpoint,
+        api_key= settings.qdrant_api_key
+    )
+
+def create_collection():
+    client = get_qdrant_client()
+    client.create_collection(
+        collection_name= COLLECTION_NAME,
+        vectors_config= VectorParams(size= VECTOR_SIZE, distance= Distance.COSINE),
+    )
+    print(f"Created collection '{COLLECTION_NAME}'")
+
+# ---- QDRANT SETUP ENDs --------------
+
+# ------- Now Embeddings Creation ----------
+
+from openai import OpenAI
+from qdrant_client.models import PointStruct
+import uuid
+
+EMBEDDING_MODEL = "text-embedding-3-small"
+
+
+def get_openai_client() -> OpenAI:
+    settings = get_settings()
+    return OpenAI(api_key=settings.openai_api_key)
+
+
+def embed_texts(texts: list[str]) -> list[list[float]]:
+    client = get_openai_client()
+    response = client.embeddings.create(model=EMBEDDING_MODEL, input=texts)
+    return [item.embedding for item in response.data]
+
+
+def upload_chunks(chunks: list[dict]):
+    texts = [chunk["text"] for chunk in chunks]
+    vectors = embed_texts(texts)
+
+    points = []
+    for chunk, vector in zip(chunks, vectors):
+        point = PointStruct(
+            id=str(uuid.uuid4()),
+            vector=vector,
+            payload={"text": chunk["text"], "source": chunk["source"]},
+        )
+        points.append(point)
+
+    client = get_qdrant_client()
+    client.upsert(collection_name=COLLECTION_NAME, points=points)
+    print(f"Uploaded {len(points)} chunks to Qdrant")
+
+    
