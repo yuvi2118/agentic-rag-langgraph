@@ -3,3 +3,9 @@ fastapi
 uvicorn[standard]
 python-dotenv
 pydantic-settings
+
+# --- Step 2: document loading + chunking ---
+pypdf
+beautifulsoup4
+python-docx
+python-pptx
