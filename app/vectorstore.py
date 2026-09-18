@@ -62,4 +62,25 @@ def upload_chunks(chunks: list[dict]):
     client.upsert(collection_name=COLLECTION_NAME, points=points)
     print(f"Uploaded {len(points)} chunks to Qdrant")
 
+# -------  Embeddings Created  ----------
+
+## -------- Retrieval Check [testing] ------------
+
+def search(query : str , top_k: int = 5 ) -> list[dict]:
+    query_vector = embed_texts([query])[0]
     
+    client = get_qdrant_client()
+    results = client.query_points(
+        collection_name=COLLECTION_NAME,
+        query=query_vector,
+        limit=top_k,
+    )
+
+    return [
+        {
+            "text": point.payload["text"],
+            "source": point.payload["source"],
+            "score": point.score,
+        }
+        for point in results.points
+    ]
