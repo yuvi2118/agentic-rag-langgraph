@@ -9,6 +9,7 @@ class AgentState(TypedDict):
     messages : Annotated[list , add_messages]
     intent : str
     search_query : str
+    retrieved_chunks: list[dict]
 
 class PlannerOutput(BaseModel):
     intent : str
@@ -48,3 +49,20 @@ def retriever_node(state: AgentState) -> dict:
     candidates = search(query,top_k=15)
     reranked = rerank(query, candidates, top_n=5)
     return {"retrieved_chunks": reranked}
+
+
+from tavily import TavilyClient
+
+def web_search_node(state : AgentState) -> dict:
+    settings = get_settings()
+    client = TavilyClient(api_key=settings.tavily_api_key)
+
+    query = state["search_query"]
+    response = client.search(query=query, max_results=5)
+
+    results = [
+    {"text": r["content"], "source": r["url"], "relevance_score": r["score"]}
+
+    for r in response["results"]]
+
+    return {"retrieved_chunks": results}

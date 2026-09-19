@@ -17,6 +17,8 @@ openai
 # --- Step 4: reranking ---
 cohere
 
+# --- Step 5: LangGraph agent ---
 langgraph
 langchain-core
 langchain-groq
+tavily-python

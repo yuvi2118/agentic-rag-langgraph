@@ -121,7 +121,7 @@ def rerank(query: str, chunks: list[dict], top_n: int = 5) -> list[dict]:
             {
                 "text": original_chunk["text"],
                 "source": original_chunk["source"],
-                "rerank_score": result.relevance_score,
+                "relevance_score": result.relevance_score,
             }
         )
     return reranked
