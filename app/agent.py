@@ -2,6 +2,8 @@ from typing import TypedDict , Annotated
 from langgraph.graph.message import add_messages
 from langchain_groq import ChatGroq
 from pydantic import BaseModel
+from app.config import configure_langsmith
+configure_langsmith()
 
 from app.config import get_settings
 
