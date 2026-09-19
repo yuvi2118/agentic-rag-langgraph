@@ -23,3 +23,7 @@ langchain-core
 langchain-groq
 langchain-openai
 tavily-python
+
+# --- Step 8: UI ---
+chainlit
+requests
