@@ -21,4 +21,5 @@ cohere
 langgraph
 langchain-core
 langchain-groq
+langchain-openai
 tavily-python

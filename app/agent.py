@@ -66,3 +66,34 @@ def web_search_node(state : AgentState) -> dict:
     for r in response["results"]]
 
     return {"retrieved_chunks": results}
+
+
+from langchain_openai import ChatOpenAI
+
+def responder_node(state: AgentState) -> dict:
+    settings = get_settings()
+    llm = ChatOpenAI(
+        model= "gpt-4o-mini",api_key=settings.openai_api_key
+    )
+
+    if state["retrieved_chunks"]:
+        context_text = "\n\n".join(
+            f"[Source: {c['source']}]\n{c['text']}" for c in state["retrieved_chunks"]
+        )
+        system_prompt = (
+            "You are a helpful Kubernetes assistant. Answer the user's question "
+            "using ONLY the context below. If the context doesn't contain the "
+            "answer, say you don't know - do not make things up. Mention which "
+            "source(s) you used.\n\n"
+            f"Context:\n{context_text}"
+        )
+
+    else:
+        system_prompt = (
+            "You are a helpful Kubernetes assistant having a normal conversation. "
+            "Respond naturally."
+        )
+
+    messages = [{"role": "system", "content": system_prompt}] + state["messages"]
+    response = llm.invoke(messages)
+    return {"messages": [{"role": "assistant", "content": response.content}]}
