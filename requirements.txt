@@ -26,4 +26,4 @@ tavily-python
 
 # --- Step 8: UI ---
 chainlit
-requests
+httpx

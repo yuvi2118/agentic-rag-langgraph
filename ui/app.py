@@ -1,7 +1,7 @@
 import uuid
 
 import chainlit as cl
-import requests
+import httpx
 
 BACKEND_URL = "http://localhost:8000/query"
 
@@ -15,14 +15,18 @@ async def start():
 @cl.on_message
 async def main(message: cl.Message):
     thread_id = cl.user_session.get("thread_id")
+    msg = cl.Message(content="🤔 Thinking...")
+    await msg.send()
 
-    response = requests.post(
-        BACKEND_URL, json={"q": message.content, "thread_id": thread_id}
-    )
-    data = response.json()
+    first_chunk = True
+    async with httpx.AsyncClient(timeout=None) as client:
+        async with client.stream(
+            "POST", BACKEND_URL, json={"q": message.content, "thread_id": thread_id}
+        ) as response:
+            async for chunk in response.aiter_text():
+                if first_chunk:
+                    msg.content = ""
+                    first_chunk = False
+                await msg.stream_token(chunk)
 
-    answer = data["answer"]
-    if data["sources"]:
-        answer += f"\n\n**Sources:** {', '.join(data['sources'])}"
-
-    await cl.Message(content=answer).send()
+    await msg.update()

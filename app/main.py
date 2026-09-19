@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.agent import app_graph
@@ -11,20 +12,24 @@ class QueryRequest(BaseModel):
     thread_id: str
 
 
-class QueryResponse(BaseModel):
-    answer: str
-    sources: list[str]
+async def stream_answer(question: str, thread_id: str):
+    config = {"configurable": {"thread_id": thread_id}}
 
-
-@app.post("/query", response_model=QueryResponse)
-def query(request: QueryRequest):
-    config = {"configurable": {"thread_id": request.thread_id}}
-    result = app_graph.invoke(
-        {"messages": [{"role": "user", "content": request.q}]},
+    async for event in app_graph.astream_events(
+        {"messages": [{"role": "user", "content": question}]},
         config=config,
+        version="v2",
+    ):
+        is_token = event["event"] == "on_chat_model_stream"
+        is_responder = event["metadata"].get("langgraph_node") == "responder"
+        if is_token and is_responder:
+            token = event["data"]["chunk"].content
+            if token:
+                yield token
+
+
+@app.post("/query")
+async def query(request: QueryRequest):
+    return StreamingResponse(
+        stream_answer(request.q, request.thread_id), media_type="text/plain"
     )
-
-    answer = result["messages"][-1].content
-    sources = list({chunk["source"] for chunk in result.get("retrieved_chunks", [])})
-
-    return QueryResponse(answer=answer, sources=sources)
