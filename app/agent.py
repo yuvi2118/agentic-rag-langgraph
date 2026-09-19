@@ -76,7 +76,7 @@ def responder_node(state: AgentState) -> dict:
         model= "gpt-4o-mini",api_key=settings.openai_api_key
     )
 
-    if state["retrieved_chunks"]:
+    if state.get("retrieved_chunks"):
         context_text = "\n\n".join(
             f"[Source: {c['source']}]\n{c['text']}" for c in state["retrieved_chunks"]
         )
@@ -97,3 +97,36 @@ def responder_node(state: AgentState) -> dict:
     messages = [{"role": "system", "content": system_prompt}] + state["messages"]
     response = llm.invoke(messages)
     return {"messages": [{"role": "assistant", "content": response.content}]}
+
+from langgraph.graph import StateGraph, START, END
+from langgraph.checkpoint.memory import MemorySaver
+
+
+def route_after_planner(state: AgentState) -> str:
+    if state["intent"] == "conversational":
+        return "responder"
+    return "retriever"
+
+
+def route_after_retriever(state: AgentState) -> str:
+    top_score = state["retrieved_chunks"][0]["relevance_score"] if state["retrieved_chunks"] else 0
+    if top_score < CONFIDENCE_THRESHOLD:
+        return "web_search"
+    return "responder"
+
+
+graph = StateGraph(AgentState)
+
+graph.add_node("planner", planner_node)
+graph.add_node("retriever", retriever_node)
+graph.add_node("web_search", web_search_node)
+graph.add_node("responder", responder_node)
+
+graph.add_edge(START, "planner")
+graph.add_conditional_edges("planner", route_after_planner, {"retriever": "retriever", "responder": "responder"})
+graph.add_conditional_edges("retriever", route_after_retriever, {"web_search": "web_search", "responder": "responder"})
+graph.add_edge("web_search", "responder")
+graph.add_edge("responder", END)
+
+checkpointer = MemorySaver()
+app_graph = graph.compile(checkpointer=checkpointer)
