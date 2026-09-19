@@ -16,3 +16,7 @@ openai
 
 # --- Step 4: reranking ---
 cohere
+
+langgraph
+langchain-core
+langchain-groq
