@@ -36,3 +36,15 @@ def planner_node(state : AgentState) -> dict:
         [{"role": "system", "content": system_prompt}] + state["messages"]
     )
     return {"intent": result.intent, "search_query": result.search_query}
+
+
+from app.vectorstore import search , rerank 
+
+CONFIDENCE_THRESHOLD = 0.3
+
+def retriever_node(state: AgentState) -> dict:
+    query = state["search_query"]
+
+    candidates = search(query,top_k=15)
+    reranked = rerank(query, candidates, top_n=5)
+    return {"retrieved_chunks": reranked}
