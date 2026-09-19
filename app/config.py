@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     # Vector DB
     qdrant_api_key: str
     qdrant_cluster_endpoint: str
+    cohere_api_key: str
 
     # Added later: jina_api_key, portkey_api_key, langsmith_api_key, logfire_token
 

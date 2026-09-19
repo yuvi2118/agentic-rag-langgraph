@@ -13,3 +13,6 @@ beautifulsoup4
 # --- Step 3: embeddings + vector store ---
 qdrant-client
 openai
+
+# --- Step 4: reranking ---
+cohere

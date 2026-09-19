@@ -8,20 +8,22 @@ COLLECTION_NAME = "kubernetes_docs"
 
 VECTOR_SIZE = 1536
 
+
 def get_qdrant_client() -> QdrantClient:
     settings = get_settings()
     return QdrantClient(
-        url= settings.qdrant_cluster_endpoint,
-        api_key= settings.qdrant_api_key
+        url=settings.qdrant_cluster_endpoint, api_key=settings.qdrant_api_key
     )
+
 
 def create_collection():
     client = get_qdrant_client()
     client.create_collection(
-        collection_name= COLLECTION_NAME,
-        vectors_config= VectorParams(size= VECTOR_SIZE, distance= Distance.COSINE),
+        collection_name=COLLECTION_NAME,
+        vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE),
     )
     print(f"Created collection '{COLLECTION_NAME}'")
+
 
 # ---- QDRANT SETUP ENDs --------------
 
@@ -62,13 +64,15 @@ def upload_chunks(chunks: list[dict]):
     client.upsert(collection_name=COLLECTION_NAME, points=points)
     print(f"Uploaded {len(points)} chunks to Qdrant")
 
+
 # -------  Embeddings Created  ----------
 
 ## -------- Retrieval Check [testing] ------------
 
-def search(query : str , top_k: int = 5 ) -> list[dict]:
+
+def search(query: str, top_k: int = 5) -> list[dict]:
     query_vector = embed_texts([query])[0]
-    
+
     client = get_qdrant_client()
     results = client.query_points(
         collection_name=COLLECTION_NAME,
@@ -84,3 +88,40 @@ def search(query : str , top_k: int = 5 ) -> list[dict]:
         }
         for point in results.points
     ]
+
+
+# ----- Rerank -------------------
+
+
+import cohere
+
+RERANK_MODEL = "rerank-v3.5"
+
+
+def get_cohere_client() -> cohere.ClientV2:
+    settings = get_settings()
+    return cohere.ClientV2(api_key=settings.cohere_api_key)
+
+
+def rerank(query: str, chunks: list[dict], top_n: int = 5) -> list[dict]:
+    client = get_cohere_client()
+    documents = [chunk["text"] for chunk in chunks]
+
+    response = client.rerank(
+        model=RERANK_MODEL,
+        query=query,
+        documents=documents,
+        top_n=top_n,
+    )
+
+    reranked = []
+    for result in response.results:
+        original_chunk = chunks[result.index]
+        reranked.append(
+            {
+                "text": original_chunk["text"],
+                "source": original_chunk["source"],
+                "rerank_score": result.relevance_score,
+            }
+        )
+    return reranked
