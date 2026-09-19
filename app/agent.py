@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import TypedDict , Annotated
 from langgraph.graph.message import add_messages
 from langchain_groq import ChatGroq
@@ -24,15 +25,19 @@ def planner_node(state : AgentState) -> dict:
     )
     structured_llm = llm.with_structured_output(PlannerOutput)
 
+    today = datetime.now().strftime("%Y-%m-%d")
+
     system_prompt = (
+        f"Today's date is {today}. "
         "You are a routing assistant for a Kubernetes documentation chatbot. "
         "Given the conversation, decide:\n"
         "1. intent: 'conversational' if it's small talk/greetings with no real "
         "question, otherwise 'technical'.\n"
         "2. search_query: if intent is 'technical', rewrite the user's latest "
         "message into a standalone, self-contained search query using context "
-        "from earlier messages if needed. If intent is 'conversational', return "
-        "an empty string."
+        "from earlier messages if needed, using today's actual date above for "
+        "any relative time references (e.g. 'this month', 'recently'). If intent "
+        "is 'conversational', return an empty string."
     )
 
     result = structured_llm.invoke(
@@ -43,7 +48,7 @@ def planner_node(state : AgentState) -> dict:
 
 from app.vectorstore import search , rerank 
 
-CONFIDENCE_THRESHOLD = 0.3
+CONFIDENCE_THRESHOLD = 0.5
 
 def retriever_node(state: AgentState) -> dict:
     query = state["search_query"]

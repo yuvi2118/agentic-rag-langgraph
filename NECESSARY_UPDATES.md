@@ -3,6 +3,23 @@
 Running list of things we deliberately simplified or deferred while building,
 to revisit once the full pipeline works end-to-end.
 
+## FIXED: web_search fallback wasn't triggering for real recency questions
+
+Found via manual testing: "search is there any new updates came in september
+in k8s" returned "I don't know" instead of falling back to Tavily. Root
+causes (both fixed):
+
+1. planner_node had no notion of the actual current date, so it rewrote
+   time-relative queries using a stale/hallucinated year (e.g. "September
+   2024" when the real date was 2026). Fixed by injecting
+   `datetime.now()` into the planner's system prompt.
+2. CONFIDENCE_THRESHOLD was 0.3, which let weak/irrelevant matches (~0.33,
+   from an unrelated architecture.pptx chunk) pass as "confident enough" and
+   skip the web_search fallback. Calibrated against real queries: good
+   matches scored 0.83-0.94, bad matches scored 0.04-0.27 - wide gap, no
+   ambiguous middle ground in this sample. Raised threshold to 0.5 for
+   margin on both sides.
+
 ## Chunking (app/ingestion.py - chunk_text)
 
 - Current approach: custom paragraph-based greedy packing (split on `\n\n`,
